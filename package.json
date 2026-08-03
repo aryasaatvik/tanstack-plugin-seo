@@ -59,7 +59,7 @@
     "prepack": "bun run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "tegami": "bun tegami.config.mts",
+    "tegami": "GH_TOKEN=\"$(gh auth token)\" bun tegami.config.mts",
     "version:packages": "bun run tegami version",
     "release:check": "bun run typecheck && bun run test && bun run build",
     "release": "bun run release:check && bun run tegami publish"
