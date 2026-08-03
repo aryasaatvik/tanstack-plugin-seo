@@ -1,0 +1,106 @@
+{
+  "name": "tanstack-plugin-seo",
+  "version": "0.0.0",
+  "description": "Route-declared SEO for TanStack Router: graph, sitemap/robots, React head helpers, Vite coverage gate, and CLI.",
+  "keywords": [
+    "seo",
+    "tanstack",
+    "tanstack-router",
+    "sitemap",
+    "robots",
+    "json-ld",
+    "vite"
+  ],
+  "homepage": "https://github.com/aryasaatvik/tanstack-plugin-seo#readme",
+  "bugs": {
+    "url": "https://github.com/aryasaatvik/tanstack-plugin-seo/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aryasaatvik/tanstack-plugin-seo.git"
+  },
+  "bin": {
+    "seo": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "bunx tsdown",
+    "prepare": "bun run build",
+    "prepack": "bun run build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "tegami": "bun tegami.config.mts",
+    "version:packages": "bun run tegami version",
+    "release:check": "bun run typecheck && bun run test && bun run build",
+    "release": "bun run release:check && bun run tegami publish"
+  },
+  "dependencies": {
+    "@tanstack/router-generator": "^1.167.21"
+  },
+  "devDependencies": {
+    "@effect/platform-bun": "4.0.0-beta.102",
+    "@effect/vitest": "4.0.0-beta.102",
+    "@tanstack/react-router": "^1.170.18",
+    "@types/node": "^24.0.0",
+    "@types/react": "19.2.18",
+    "effect": "4.0.0-beta.102",
+    "react": "19.2.8",
+    "schema-dts": "^2.0.0",
+    "tegami": "1.3.1",
+    "tsdown": "^0.22.13",
+    "typescript": "^6.0.3",
+    "vite": "~8.2.0",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "@effect/platform-bun": ">=4.0.0-beta.0",
+    "@tanstack/react-router": "^1.170.0",
+    "effect": ">=4.0.0-beta.0",
+    "react": "^19.0.0",
+    "vite": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@effect/platform-bun": {
+      "optional": true
+    },
+    "effect": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  }
+}

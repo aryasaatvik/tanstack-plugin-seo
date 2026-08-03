@@ -1,0 +1,338 @@
+import { describe, expect, it } from "@effect/vitest";
+import type { AnyRoute } from "@tanstack/react-router";
+
+import { buildSeoGraph, type SeoCollection } from "../../src/core/graph";
+import { renderRobots, renderSitemap } from "../../src/core/projections";
+
+/**
+ * A representative route-tree fixture that mirrors a real app's `staticData.seo`
+ * declarations for the nodes under test. `buildSeoGraph` is pure over the
+ * structural route shape, so this fixture exercises the same walk, merge, and
+ * policy-inheritance logic a generated route tree would.
+ */
+function route(
+  options: {
+    path?: string | undefined;
+    seo?: unknown;
+  },
+  children?: Array<unknown> | undefined,
+): unknown {
+  return {
+    options: {
+      path: options.path,
+      staticData: options.seo ? { seo: options.seo } : undefined,
+    },
+    children,
+  };
+}
+
+const fixtureRouteTree = route({ seo: { kind: "page", crumb: "Home" } }, [
+  // (marketing) route group — pathless, transparent
+  route({}, [
+    route({
+      path: "/",
+      seo: { kind: "page", sitemap: { priority: 1.0, changeFrequency: "weekly" } },
+    }),
+    route({
+      path: "/pricing",
+      seo: {
+        kind: "page",
+        crumb: "Pricing",
+        sitemap: { priority: 0.9, changeFrequency: "weekly" },
+        link: { title: "Pricing", description: "Per-email pricing." },
+      },
+    }),
+    route({
+      path: "/developers",
+      seo: {
+        kind: "page",
+        crumb: "Developers",
+        sitemap: { priority: 0.8, changeFrequency: "monthly" },
+        link: { title: "Developer reference", description: "Typed SDKs and webhooks." },
+      },
+    }),
+    // features layout (hub, crumb) + index (page, sitemap) + email redirect
+    route({ path: "/features", seo: { kind: "hub", crumb: "Features" } }, [
+      route({
+        path: "/",
+        seo: {
+          kind: "page",
+          sitemap: { priority: 0.9, changeFrequency: "monthly" },
+          link: { title: "Email API features", description: "The whole email surface." },
+        },
+      }),
+      route({ path: "/email", seo: { kind: "page", redirectTo: "/features" } }),
+    ]),
+    // blog layout (hub) + index (page) + $slug (article collection)
+    route({ path: "/blog", seo: { kind: "hub", crumb: "Blog" } }, [
+      route({
+        path: "/",
+        seo: { kind: "page", sitemap: { priority: 0.8, changeFrequency: "weekly" } },
+      }),
+      route({
+        path: "/$slug",
+        seo: {
+          kind: "article",
+          crumb: () => "Post",
+          sitemap: { priority: 0.7, changeFrequency: "weekly" },
+          related: ["/features", "/pricing", "/developers"],
+        },
+      }),
+    ]),
+    // guides layout + index + $slug
+    route({ path: "/guides", seo: { kind: "hub", crumb: "Guides" } }, [
+      route({
+        path: "/",
+        seo: { kind: "page", sitemap: { priority: 0.8, changeFrequency: "weekly" } },
+      }),
+      route({
+        path: "/$slug",
+        seo: {
+          kind: "article",
+          crumb: () => "Guide",
+          sitemap: { priority: 0.7, changeFrequency: "weekly" },
+          related: ["/features", "/pricing", "/developers"],
+        },
+      }),
+    ]),
+    // /compare — noindex hub, excluded from the sitemap
+    route({
+      path: "/compare",
+      seo: { kind: "hub", sitemap: false, robots: "noindex, follow" },
+    }),
+  ]),
+  // (docs) route group + splat collection
+  route({}, [
+    route({
+      path: "/docs/$",
+      seo: { kind: "page", sitemap: { priority: 0.8, changeFrequency: "weekly" } },
+    }),
+  ]),
+]) as AnyRoute;
+
+const blog: SeoCollection = {
+  route: "/blog/$slug",
+  source: "blog",
+  instances: [
+    { path: "/blog/post-a", title: "Post A", description: "A post.", publishedAt: "2026-01-01" },
+  ],
+};
+
+const guides: SeoCollection = {
+  route: "/guides/$slug",
+  source: "guide",
+  instances: [
+    {
+      path: "/guides/guide-a",
+      title: "Guide A",
+      description: "A guide.",
+      publishedAt: "2026-02-01",
+      modifiedAt: "2026-03-01",
+    },
+  ],
+};
+
+/** The caller (not the package) applies visibility filtering — a staged page is simply absent. */
+const docs: SeoCollection = {
+  route: "/docs/$",
+  source: "docs",
+  instances: [{ path: "/docs", title: "Docs Home" }],
+};
+
+const buildFixtureGraph = () =>
+  buildSeoGraph({ routeTree: fixtureRouteTree, collections: [blog, guides, docs] });
+
+const ORIGIN = "https://example.test";
+const DISALLOW = ["/dashboard", "/api"];
+
+describe("buildSeoGraph", () => {
+  it("keeps the declared policy on a static route node", () => {
+    const graph = buildFixtureGraph();
+    const pricing = graph.nodes.get("/pricing");
+    expect(pricing?.kind).toBe("page");
+    expect(pricing?.source).toBe("route");
+    expect(pricing?.policy.sitemap).toEqual({ priority: 0.9, changeFrequency: "weekly" });
+  });
+
+  it("merges a layout route's crumb with its index child's policy", () => {
+    const graph = buildFixtureGraph();
+    const features = graph.nodes.get("/features");
+    // hub layout supplies the crumb, index child supplies kind + sitemap
+    expect(features?.kind).toBe("page");
+    expect(features?.policy.crumb).toBe("Features");
+    expect(features?.policy.sitemap).toEqual({ priority: 0.9, changeFrequency: "monthly" });
+  });
+
+  it("models /features/email as a redirect node with a redirect edge", () => {
+    const graph = buildFixtureGraph();
+    const email = graph.nodes.get("/features/email");
+    expect(email?.policy.redirectTo).toBe("/features");
+    expect(graph.edges).toContainEqual({
+      from: "/features/email",
+      to: "/features",
+      type: "redirect",
+    });
+  });
+
+  it("carries frontmatter dates on an instance node and inherits the route's policy", () => {
+    const graph = buildFixtureGraph();
+    const guide = graph.nodes.get("/guides/guide-a");
+    expect(guide?.source).toBe("guide");
+    expect(guide?.kind).toBe("article");
+    expect(guide?.instance?.title).toBe("Guide A");
+    expect(guide?.instance?.publishedAt).toBe("2026-02-01");
+    expect(guide?.instance?.modifiedAt).toBe("2026-03-01");
+    // instance inherits the collection route's sitemap policy
+    expect(guide?.policy.sitemap).toEqual({ priority: 0.7, changeFrequency: "weekly" });
+  });
+
+  it("only admits the instances the collection supplies", () => {
+    const graph = buildFixtureGraph();
+    expect(graph.nodes.has("/docs")).toBe(true);
+    expect(graph.nodes.has("/docs/hidden")).toBe(false);
+  });
+
+  it("reports a collision when an instance claims a path another node already owns", () => {
+    const graph = buildSeoGraph({
+      routeTree: fixtureRouteTree,
+      collections: [
+        {
+          route: "/blog/$slug",
+          source: "blog",
+          instances: [{ path: "/pricing", title: "Impostor" }],
+        },
+      ],
+    });
+    expect(graph.collisions).toEqual([{ path: "/pricing", sources: ["route", "blog"] }]);
+    // the first owner keeps the path
+    expect(graph.nodes.get("/pricing")?.source).toBe("route");
+  });
+
+  it("drops the edges of an instance it rejected for a collision", () => {
+    const graph = buildSeoGraph({
+      routeTree: fixtureRouteTree,
+      collections: [
+        {
+          route: "/blog/$slug",
+          source: "blog",
+          instances: [
+            { path: "/pricing", title: "Impostor" },
+            { path: "/blog/real", title: "Real" },
+          ],
+          edges: [
+            // the impostor never became a node; an edge out of it would dangle
+            { from: "/pricing", to: "/blog/real", type: "related" },
+            { from: "/blog/real", to: "/blog", type: "crumb-parent" },
+          ],
+        },
+      ],
+    });
+    expect(graph.edges).not.toContainEqual({
+      from: "/pricing",
+      to: "/blog/real",
+      type: "related",
+    });
+    expect(graph.edges).toContainEqual({ from: "/blog/real", to: "/blog", type: "crumb-parent" });
+  });
+
+  it("appends the edges a collection declares", () => {
+    const graph = buildSeoGraph({
+      routeTree: fixtureRouteTree,
+      collections: [
+        {
+          route: "/blog/$slug",
+          source: "blog",
+          instances: [{ path: "/blog/post-a", title: "Post A" }],
+          edges: [{ from: "/blog/post-a", to: "/blog", type: "crumb-parent" }],
+        },
+      ],
+    });
+    expect(graph.edges).toContainEqual({ from: "/blog/post-a", to: "/blog", type: "crumb-parent" });
+  });
+
+  it("links crumb nodes to their nearest crumb ancestor down the route chain", () => {
+    const graph = buildFixtureGraph();
+    expect(graph.edges).toContainEqual({ from: "/pricing", to: "/", type: "crumb-parent" });
+    expect(graph.edges).toContainEqual({ from: "/blog/$slug", to: "/blog", type: "crumb-parent" });
+    expect(graph.edges).toContainEqual({ from: "/blog", to: "/", type: "crumb-parent" });
+  });
+
+  it("emits related edges from the collection template, not per instance", () => {
+    const graph = buildFixtureGraph();
+    expect(graph.edges).toContainEqual({ from: "/blog/$slug", to: "/features", type: "related" });
+    // instances do not re-emit related edges
+    expect(graph.edges.some((e) => e.from === "/blog/post-a" && e.type === "related")).toBe(false);
+  });
+});
+
+describe("renderSitemap", () => {
+  it("omits <lastmod> on static routes but emits it on content instances", () => {
+    const sitemap = renderSitemap(buildFixtureGraph(), { origin: ORIGIN, indexable: true });
+    // static /pricing: <loc> flows straight into <changefreq>, no <lastmod>
+    expect(sitemap).toContain(`<loc>${ORIGIN}/pricing</loc>\n    <changefreq>weekly</changefreq>`);
+    // blog instance: <loc> is followed by a <lastmod> from frontmatter
+    expect(sitemap).toContain(`<loc>${ORIGIN}/blog/post-a</loc>\n    <lastmod>`);
+  });
+
+  it("prefers modifiedAt over publishedAt for an instance's lastmod", () => {
+    const sitemap = renderSitemap(buildFixtureGraph(), { origin: ORIGIN, indexable: true });
+    expect(sitemap).toContain(
+      `<loc>${ORIGIN}/guides/guide-a</loc>\n    <lastmod>2026-03-01T00:00:00.000Z</lastmod>`,
+    );
+  });
+
+  it("omits <lastmod> for an instance whose collection carries no dates", () => {
+    const sitemap = renderSitemap(buildFixtureGraph(), { origin: ORIGIN, indexable: true });
+    expect(sitemap).toContain(`<loc>${ORIGIN}/docs</loc>\n    <changefreq>weekly</changefreq>`);
+  });
+
+  it("excludes noindex hubs, redirects, and param templates", () => {
+    const sitemap = renderSitemap(buildFixtureGraph(), { origin: ORIGIN, indexable: true });
+    expect(sitemap).not.toContain("/compare");
+    expect(sitemap).not.toContain("/features/email");
+    expect(sitemap).not.toContain("$slug");
+  });
+
+  it("includes the homepage as the bare origin and the docs home", () => {
+    const sitemap = renderSitemap(buildFixtureGraph(), { origin: ORIGIN, indexable: true });
+    expect(sitemap).toContain(`<loc>${ORIGIN}</loc>`);
+    expect(sitemap).toContain(`<loc>${ORIGIN}/docs</loc>`);
+  });
+
+  it("deduplicates URLs that differ only by case or a trailing slash", () => {
+    const graph = buildFixtureGraph();
+    const pricing = graph.nodes.get("/pricing");
+    expect(pricing).toBeDefined();
+    graph.nodes.set("/PRICING/", { ...pricing!, path: "/PRICING/" });
+
+    const sitemap = renderSitemap(graph, { origin: ORIGIN, indexable: true });
+    expect(sitemap.match(/<loc>[^<]*\/pricing\/?<\/loc>/gi)).toHaveLength(1);
+  });
+});
+
+describe("renderRobots", () => {
+  it("disallows exactly the paths the caller passes on an indexable host", () => {
+    const robots = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: true,
+      disallow: DISALLOW,
+    });
+    for (const path of DISALLOW) {
+      expect(robots).toContain(`Disallow: ${path}`);
+    }
+    // noindex pages use meta robots, never a robots.txt Disallow
+    expect(robots).not.toContain("Disallow: /compare");
+    expect(robots).toContain(`Sitemap: ${ORIGIN}/sitemap.xml`);
+  });
+
+  it("serves a disallow-all with no Sitemap line on a non-indexable host", () => {
+    const robots = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: false,
+      disallow: DISALLOW,
+    });
+    expect(robots).toContain("Disallow: /");
+    expect(robots).not.toContain("Allow: /");
+    expect(robots).not.toContain("Sitemap:");
+  });
+});

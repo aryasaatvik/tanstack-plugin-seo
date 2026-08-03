@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.turbo/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+.tegami/publish-lock.yaml

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node", "react"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "target": "ES2023",
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src", "tests", "tegami.config.mts", "tsdown.config.mjs", "vitest.config.ts"]
+}
