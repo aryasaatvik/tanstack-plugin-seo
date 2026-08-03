@@ -1,9 +1,6 @@
----
-packages:
-  "tanstack-plugin-seo": minor
----
+## tanstack-plugin-seo@0.1.0
 
-## Initial release
+### Initial release
 
 Route-declared SEO for TanStack Router: declare once on the route, then derive
 the sitemap, robots.txt, breadcrumbs, JSON-LD, cross-link graph, Vite coverage
