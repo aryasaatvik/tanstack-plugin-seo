@@ -10,10 +10,10 @@ flowchart LR
   subgraph declare["declare once"]
     route["staticData.seo<br/>+ head()"]
   end
-  route --> graph["SeoGraph<br/>(nodes + edges)"]
-  graph --> sitemap["sitemap.xml"]
-  graph --> robots["robots.txt"]
-  graph --> check["seo check · CI gate"]
+  route --> seograph["SeoGraph<br/>(nodes + edges)"]
+  seograph --> sitemap["sitemap.xml"]
+  seograph --> robots["robots.txt"]
+  seograph --> check["seo check · CI gate"]
   route --> head["&lt;head&gt; meta · canonical<br/>Breadcrumbs · JSON-LD"]
   gate["seoRouteConfig (vite)"] -. "fails undeclared pages" .-> route
 ```
