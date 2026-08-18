@@ -1,6 +1,6 @@
 {
   "name": "tanstack-plugin-seo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Route-declared SEO for TanStack Router: graph, sitemap/robots, React head helpers, Vite coverage gate, and CLI.",
   "keywords": [
     "seo",
