@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import type { AnyRoute } from "@tanstack/react-router";
 
 import { buildSeoGraph, type SeoCollection } from "../../src/core/graph";
-import { renderRobots, renderSitemap } from "../../src/core/projections";
+import { contentSignal, renderRobots, renderSitemap } from "../../src/core/projections";
 
 /**
  * A representative route-tree fixture that mirrors a real app's `staticData.seo`
@@ -334,5 +334,123 @@ describe("renderRobots", () => {
     expect(robots).toContain("Disallow: /");
     expect(robots).not.toContain("Allow: /");
     expect(robots).not.toContain("Sitemap:");
+  });
+
+  it("omits Content-Signal unless the caller passes one", () => {
+    const robots = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: true,
+      disallow: DISALLOW,
+    });
+    expect(robots).not.toContain("Content-Signal:");
+    expect(robots).toBe(
+      [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /dashboard",
+        "Disallow: /api",
+        "",
+        `Sitemap: ${ORIGIN}/sitemap.xml`,
+        `Host: ${ORIGIN}`,
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("emits Content-Signal on an indexable host when the caller sets it", () => {
+    const robots = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: true,
+      disallow: DISALLOW,
+      contentSignal: "search=yes, ai-input=yes, ai-train=yes",
+    });
+    expect(robots).toBe(
+      [
+        "User-agent: *",
+        "Content-Signal: search=yes, ai-input=yes, ai-train=yes",
+        "Allow: /",
+        "Disallow: /dashboard",
+        "Disallow: /api",
+        "",
+        `Sitemap: ${ORIGIN}/sitemap.xml`,
+        `Host: ${ORIGIN}`,
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("inserts extra directives after Content-Signal and before Allow", () => {
+    const robots = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: true,
+      disallow: DISALLOW,
+      contentSignal: "search=yes",
+      directives: ["Crawl-delay: 10", contentSignal("ai-train=no")],
+    });
+    expect(robots).toBe(
+      [
+        "User-agent: *",
+        "Content-Signal: search=yes",
+        "Crawl-delay: 10",
+        "Content-Signal: ai-train=no",
+        "Allow: /",
+        "Disallow: /dashboard",
+        "Disallow: /api",
+        "",
+        `Sitemap: ${ORIGIN}/sitemap.xml`,
+        `Host: ${ORIGIN}`,
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("drops an empty contentSignal and empty directive lines", () => {
+    const robots = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: true,
+      disallow: DISALLOW,
+      contentSignal: "",
+      directives: ["", "Crawl-delay: 10", ""],
+    });
+    expect(robots).not.toContain("Content-Signal:");
+    expect(robots).toContain("User-agent: *\nCrawl-delay: 10\nAllow: /");
+  });
+
+  it("ignores contentSignal and directives on a non-indexable host", () => {
+    const robots = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: false,
+      disallow: DISALLOW,
+      contentSignal: "search=yes, ai-input=yes, ai-train=yes",
+      directives: ["Crawl-delay: 10"],
+    });
+    expect(robots).toBe(["User-agent: *", "Disallow: /", ""].join("\n"));
+  });
+
+  it("runs transform last on both hosts", () => {
+    const wrap = (robots: string) => `# wrapped\n${robots}`;
+    const indexable = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: true,
+      disallow: DISALLOW,
+      contentSignal: "search=yes",
+      transform: wrap,
+    });
+    const preview = renderRobots(buildFixtureGraph(), {
+      origin: ORIGIN,
+      indexable: false,
+      disallow: DISALLOW,
+      contentSignal: "search=yes",
+      transform: wrap,
+    });
+    expect(indexable.startsWith("# wrapped\n")).toBe(true);
+    expect(indexable).toContain("Content-Signal: search=yes");
+    expect(preview).toBe(["# wrapped", "User-agent: *", "Disallow: /", ""].join("\n"));
+  });
+
+  it("formats a Content-Signal line from the preference list", () => {
+    expect(contentSignal("search=yes, ai-input=yes")).toBe(
+      "Content-Signal: search=yes, ai-input=yes",
+    );
   });
 });

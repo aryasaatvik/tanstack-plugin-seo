@@ -15,6 +15,26 @@ export interface ProjectionConfig {
 export interface RobotsConfig extends ProjectionConfig {
   /** Path prefixes to disallow on an indexable host (e.g. the app-only groups). */
   disallow: ReadonlyArray<string>;
+  /**
+   * Origin-wide Content-Signal preferences
+   * (https://contentsignals.org/), emitted as `Content-Signal: <value>` under
+   * `User-agent: *` on an indexable host. Omit for none. The plugin never
+   * invents a default — pass the policy you want, e.g.
+   * `"search=yes, ai-input=yes, ai-train=yes"`.
+   */
+  contentSignal?: string | undefined;
+  /**
+   * Extra full lines in the indexable `User-agent: *` group, after
+   * Content-Signal (if any) and before Allow/Disallow. Use for directives the
+   * plugin does not model, or to compose {@link contentSignal} yourself.
+   */
+  directives?: ReadonlyArray<string> | undefined;
+  /**
+   * Last-mile override: receives the rendered robots.txt and returns the file
+   * to emit. Runs for indexable and preview hosts. Use when you need to wrap
+   * or replace the default body rather than add group lines.
+   */
+  transform?: ((robots: string) => string) | undefined;
 }
 
 export interface NodeReport {
@@ -105,6 +125,22 @@ export function renderSitemap(graph: SeoGraph, cfg: ProjectionConfig): string {
   )}\n</urlset>\n`;
 }
 
+/** Format a Content-Signal robots.txt directive from the preference list. */
+export function contentSignal(value: string): string {
+  return `Content-Signal: ${value}`;
+}
+
+const groupLines = (cfg: RobotsConfig): Array<string> => {
+  const lines: Array<string> = [];
+  if (cfg.contentSignal !== undefined && cfg.contentSignal !== "") {
+    lines.push(contentSignal(cfg.contentSignal));
+  }
+  for (const directive of cfg.directives ?? []) {
+    if (directive !== "") lines.push(directive);
+  }
+  return lines;
+};
+
 /**
  * Render robots.txt. A non-indexable host (previews) gets a disallow-all
  * with no Sitemap line; an indexable host disallows exactly the prefixes the caller
@@ -113,19 +149,25 @@ export function renderSitemap(graph: SeoGraph, cfg: ProjectionConfig): string {
  * `noindex, follow` meta, so the graph's per-node robots policy never feeds this
  * list. `graph` is unused — kept for signature parity with the other projections,
  * which callers load the graph once for and pass to each.
+ *
+ * Origin-wide group directives (`contentSignal`, `directives`) are indexable-host
+ * only. {@link RobotsConfig.transform} always runs last so a consumer can override
+ * the whole file.
  */
 export function renderRobots(_graph: SeoGraph, cfg: RobotsConfig): string {
-  if (!cfg.indexable) {
-    return ["User-agent: *", "Disallow: /", ""].join("\n");
-  }
-
-  const lines = ["User-agent: *", "Allow: /"];
-  for (const path of cfg.disallow) lines.push(`Disallow: ${path}`);
-  lines.push("");
-  lines.push(`Sitemap: ${cfg.origin}/sitemap.xml`);
-  lines.push(`Host: ${cfg.origin}`);
-  lines.push("");
-  return lines.join("\n");
+  const rendered = cfg.indexable
+    ? [
+        "User-agent: *",
+        ...groupLines(cfg),
+        "Allow: /",
+        ...cfg.disallow.map((path) => `Disallow: ${path}`),
+        "",
+        `Sitemap: ${cfg.origin}/sitemap.xml`,
+        `Host: ${cfg.origin}`,
+        "",
+      ].join("\n")
+    : ["User-agent: *", "Disallow: /", ""].join("\n");
+  return cfg.transform === undefined ? rendered : cfg.transform(rendered);
 }
 
 /** Inspect a single node: its declaration, sitemap eligibility, and edges. */

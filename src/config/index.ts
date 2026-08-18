@@ -14,6 +14,7 @@
  * export default defineSeoConfig({
  *   origin: "https://example.com",
  *   disallow: routeConfig.robotsExclusions,
+ *   contentSignal: "search=yes, ai-input=yes, ai-train=yes",
  *   loadGraph: viteGraphLoader({ root: import.meta.dirname, entry: "/lib/seo/graph.ts" }),
  * });
  * ```
@@ -39,6 +40,20 @@ export interface SeoCliConfig {
    * `routeConfig.robotsExclusions` if you run the `tanstack-plugin-seo/vite` plugin.
    */
   readonly disallow: ReadonlyArray<string>;
+  /**
+   * Origin-wide Content-Signal preferences, forwarded to `renderRobots`.
+   * Omit for none. Preview (`--no-indexable`) never emits the line.
+   */
+  readonly contentSignal?: string | undefined;
+  /**
+   * Extra robots.txt group lines, forwarded to `renderRobots` as `directives`.
+   */
+  readonly directives?: ReadonlyArray<string> | undefined;
+  /**
+   * Last-mile robots.txt override, forwarded to `renderRobots` as `transform`.
+   * Runs for indexable and preview hosts.
+   */
+  readonly transform?: ((robots: string) => string) | undefined;
   /** How the CLI gets the graph. {@link viteGraphLoader} covers the Vite-app case. */
   readonly loadGraph: SeoGraphLoader;
 }

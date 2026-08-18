@@ -41,6 +41,9 @@ const findConfigFile = (from: string): string | undefined => {
   }
 };
 
+const isStringArray = (value: unknown): value is ReadonlyArray<string> =>
+  Array.isArray(value) && value.every(Predicate.isString);
+
 /**
  * `seo.config.ts` is the consumer's file and may be plain JS, so its types are
  * a suggestion, not a guarantee. Check every field the commands actually read —
@@ -51,8 +54,10 @@ const isSeoCliConfig = (value: unknown): value is SeoCliConfig =>
   Predicate.isObject(value) &&
   Predicate.isFunction(value["loadGraph"]) &&
   Predicate.isString(value["origin"]) &&
-  Array.isArray(value["disallow"]) &&
-  value["disallow"].every(Predicate.isString);
+  isStringArray(value["disallow"]) &&
+  (value["contentSignal"] === undefined || Predicate.isString(value["contentSignal"])) &&
+  (value["directives"] === undefined || isStringArray(value["directives"])) &&
+  (value["transform"] === undefined || Predicate.isFunction(value["transform"]));
 
 /**
  * Load the app's `seo.config.ts`. Cheap to run more than once per process: the

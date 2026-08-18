@@ -26,6 +26,9 @@ export const robotsCommand = Command.make("robots", {
           origin: originOf(origin, config.origin),
           indexable,
           disallow: config.disallow,
+          contentSignal: config.contentSignal,
+          directives: config.directives,
+          transform: config.transform,
         }),
       );
     }),

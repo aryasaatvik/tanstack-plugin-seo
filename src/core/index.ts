@@ -21,7 +21,7 @@ export type {
   SeoSource,
 } from "./graph";
 
-export { inspectNode, renderRobots, renderSitemap } from "./projections";
+export { contentSignal, inspectNode, renderRobots, renderSitemap } from "./projections";
 export type { NodeReport, ProjectionConfig, RobotsConfig } from "./projections";
 
 export { checkGraph, hasStructuralViolations } from "./checks";

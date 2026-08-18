@@ -27,7 +27,7 @@ bun add -D effect @effect/platform-bun   # only if you use the CLI
 
 | Entry | Exports | Peers |
 | --- | --- | --- |
-| `tanstack-plugin-seo` | `buildSeoGraph`, `renderSitemap`, `renderRobots`, `checkGraph`, `inspectHtml` | — |
+| `tanstack-plugin-seo` | `buildSeoGraph`, `renderSitemap`, `renderRobots`, `contentSignal`, `checkGraph`, `inspectHtml` | — |
 | `tanstack-plugin-seo/react` | `createSeo` → `seoHead`, `Breadcrumbs`, JSON-LD generators | `react`, `@tanstack/react-router` |
 | `tanstack-plugin-seo/vite` | `seoRouteConfig` coverage gate | `vite` |
 | `tanstack-plugin-seo/config` | `defineSeoConfig`, `viteGraphLoader` | `vite` |
@@ -99,10 +99,22 @@ export const loadSeoGraph = () =>
 
 ```ts
 // routes/sitemap[.]xml.ts — robots[.]txt.ts is symmetric
-import { renderSitemap } from "tanstack-plugin-seo";
+import { renderRobots, renderSitemap } from "tanstack-plugin-seo";
 
 renderSitemap(loadSeoGraph(), { origin, indexable: true });
+renderRobots(loadSeoGraph(), {
+  origin,
+  indexable: true,
+  disallow: routeConfig.robotsExclusions,
+  contentSignal: "search=yes, ai-input=yes, ai-train=yes",
+});
 ```
+
+`renderRobots` does not invent a Content-Signal. Pass `contentSignal` for
+the value (the plugin prefixes `Content-Signal: `), `directives` for extra
+group lines, and `transform` if you need to wrap or replace the whole file.
+Preview hosts (`indexable: false`) drop `contentSignal` and `directives`;
+`transform` still runs.
 
 **4. Gate CI.** The same graph, the same rules, exit 1 on structural violations.
 
@@ -193,6 +205,7 @@ import { defineSeoConfig, viteGraphLoader } from "tanstack-plugin-seo/config";
 export default defineSeoConfig({
   origin: "https://example.com",
   disallow: routeConfig.robotsExclusions,
+  contentSignal: "search=yes, ai-input=yes, ai-train=yes",
   loadGraph: viteGraphLoader({
     root: import.meta.dirname,
     entry: "/lib/seo/graph.ts",
