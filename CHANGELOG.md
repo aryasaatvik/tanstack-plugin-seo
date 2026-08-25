@@ -1,3 +1,9 @@
+## tanstack-plugin-seo@0.2.1
+
+### Add organization legal identity fields
+
+Organization JSON-LD can now include a legal name and structured postal address, making business identity details easier for search engines and agents to understand.
+
 ## tanstack-plugin-seo@0.2.0
 
 ### Add Content-Signal to robots.txt
