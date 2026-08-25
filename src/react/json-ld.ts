@@ -14,16 +14,40 @@ import type {
   Article,
   BreadcrumbList,
   FAQPage,
+  Graph,
+  IdReference,
   ItemList,
   Organization,
   Person,
   Question,
   Service,
+  Thing,
   WebSite,
   WithContext,
 } from "schema-dts";
 
 import { absoluteUrl, type SeoConfig } from "./site";
+
+/** Any schema.org entity accepted by `schema-dts`. */
+export type JsonLdNode = Thing;
+
+/** A top-level JSON-LD entity or graph ready to serialize into a script element. */
+export type JsonLdDocument = WithContext<JsonLdNode> | Graph;
+
+/** Add the schema.org context to an entity while preserving its concrete type. */
+export function defineJsonLd<const Node extends JsonLdNode & object>(node: Node): WithContext<Node> {
+  return { "@context": "https://schema.org", ...node };
+}
+
+/** Reference a canonical entity declared elsewhere in the same graph or page. */
+export function jsonLdRef(id: string): IdReference {
+  return { "@id": id };
+}
+
+/** Compose related schema.org entities into one top-level JSON-LD graph. */
+export function jsonLdGraph(nodes: ReadonlyArray<JsonLdNode>): Graph {
+  return { "@context": "https://schema.org", "@graph": nodes };
+}
 
 export interface ServiceParams {
   name: string;
@@ -82,11 +106,14 @@ export interface JsonLd {
 
 export function createJsonLd(config: SeoConfig): JsonLd {
   const { origin, site, organization, website } = config;
+  const organizationId = `${origin}/#organization`;
+  const websiteId = `${origin}/#website`;
 
   return {
     generateOrganizationSchema: () => ({
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": organizationId,
       name: site.name,
       ...(organization.legalName === undefined ? {} : { legalName: organization.legalName }),
       url: origin,
@@ -111,8 +138,10 @@ export function createJsonLd(config: SeoConfig): JsonLd {
     generateWebsiteSchema: () => ({
       "@context": "https://schema.org",
       "@type": "WebSite",
+      "@id": websiteId,
       name: site.name,
       url: origin,
+      publisher: jsonLdRef(organizationId),
       potentialAction: {
         "@type": "SearchAction",
         target: {
@@ -131,8 +160,8 @@ export function createJsonLd(config: SeoConfig): JsonLd {
       serviceType: params.serviceType,
       provider: {
         "@type": "Organization",
+        ...(params.provider === undefined ? { "@id": organizationId, url: origin } : {}),
         name: params.provider ?? site.name,
-        url: origin,
       },
       areaServed: params.areaServed ?? "Worldwide",
     }),
@@ -198,6 +227,7 @@ export function createJsonLd(config: SeoConfig): JsonLd {
         author: authorSchema,
         publisher: {
           "@type": "Organization",
+          "@id": organizationId,
           name: site.name,
           logo: {
             "@type": "ImageObject",

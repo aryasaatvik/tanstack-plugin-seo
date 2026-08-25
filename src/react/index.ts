@@ -27,8 +27,11 @@ export type {
   FAQItem,
   ItemListEntry,
   JsonLd,
+  JsonLdDocument,
+  JsonLdNode,
   ServiceParams,
 } from "./json-ld";
+export { defineJsonLd, jsonLdGraph, jsonLdRef } from "./json-ld";
 
 export { Breadcrumbs, resolveCrumbTrail } from "./breadcrumbs";
 export type { CrumbTrailItem } from "./breadcrumbs";
