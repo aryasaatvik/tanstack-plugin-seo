@@ -30,5 +30,23 @@ export type {
   ServiceParams,
 } from "./json-ld";
 
+export {
+  composeJsonLd,
+  defineJsonLd,
+  extendJsonLd,
+  jsonLdGraph,
+  jsonLdRef,
+} from "./json-ld-composition";
+export type {
+  JsonLdDocument,
+  JsonLdEntityIds,
+  JsonLdEntry,
+  JsonLdNode,
+  JsonLdTransform,
+  JsonLdTransformContext,
+  JsonLdTransformResult,
+  SeoJsonLdConfig,
+} from "./json-ld-composition";
+
 export { Breadcrumbs, resolveCrumbTrail } from "./breadcrumbs";
 export type { CrumbTrailItem } from "./breadcrumbs";

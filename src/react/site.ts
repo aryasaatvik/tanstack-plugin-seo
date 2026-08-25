@@ -7,6 +7,8 @@
  * `json-ld.ts`.
  */
 
+import type { SeoJsonLdConfig } from "./json-ld-composition";
+
 /** Absolute URL for an origin-relative path; an already-absolute URL passes through. */
 export function absoluteUrl(origin: string, pathOrUrl: string): string {
   return pathOrUrl.startsWith("http") ? pathOrUrl : `${origin}${pathOrUrl}`;
@@ -55,4 +57,5 @@ export interface SeoConfig {
   site: SeoSite;
   organization: SeoOrganization;
   website: SeoWebsite;
+  jsonLd?: SeoJsonLdConfig | undefined;
 }
