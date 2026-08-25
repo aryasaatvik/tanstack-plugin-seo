@@ -88,6 +88,7 @@ export function createJsonLd(config: SeoConfig): JsonLd {
       "@context": "https://schema.org",
       "@type": "Organization",
       name: site.name,
+      ...(organization.legalName === undefined ? {} : { legalName: organization.legalName }),
       url: origin,
       logo: absoluteUrl(origin, site.logo),
       description: organization.description,
@@ -97,6 +98,14 @@ export function createJsonLd(config: SeoConfig): JsonLd {
         contactType: organization.contactPoint.contactType,
         email: organization.contactPoint.email,
       },
+      ...(organization.address === undefined
+        ? {}
+        : {
+            address: {
+              "@type": "PostalAddress" as const,
+              ...organization.address,
+            },
+          }),
     }),
 
     generateWebsiteSchema: () => ({

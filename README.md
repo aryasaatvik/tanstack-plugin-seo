@@ -54,9 +54,17 @@ export const { seoHead } = createSeo({
     defaultAuthor: { name: "Example Team" },
   },
   organization: {
+    legalName: "Example, Inc.",
     description: "What the company does.",
     sameAs: ["https://github.com/example"],
     contactPoint: { contactType: "support", email: "hi@example.com" },
+    address: {
+      streetAddress: "123 Example Street",
+      addressLocality: "Example City",
+      addressRegion: "CA",
+      postalCode: "94105",
+      addressCountry: "US",
+    },
   },
   website: { searchPath: "/docs?q={search_term_string}" },
 });

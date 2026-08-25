@@ -25,11 +25,22 @@ export interface SeoSite {
   defaultAuthor: { name: string; url?: string | undefined };
 }
 
+/** Public mailing address rendered as a schema.org PostalAddress. */
+export interface SeoPostalAddress {
+  streetAddress: string;
+  addressLocality: string;
+  addressRegion: string;
+  postalCode: string;
+  addressCountry: string;
+}
+
 /** The site-wide Organization entity (Knowledge Graph). */
 export interface SeoOrganization {
+  legalName?: string | undefined;
   description: string;
   sameAs: ReadonlyArray<string>;
   contactPoint: { contactType: string; email: string };
+  address?: SeoPostalAddress | undefined;
 }
 
 /** The site-wide WebSite entity (sitelinks search box). */

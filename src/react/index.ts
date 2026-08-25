@@ -13,7 +13,13 @@
 export { createSeo } from "./create-seo";
 export type { PageSeoInstance, Seo, SeoHead, SeoHeadCtx } from "./create-seo";
 
-export type { SeoConfig, SeoOrganization, SeoSite, SeoWebsite } from "./site";
+export type {
+  SeoConfig,
+  SeoOrganization,
+  SeoPostalAddress,
+  SeoSite,
+  SeoWebsite,
+} from "./site";
 
 export type {
   ArticleParams,
