@@ -141,12 +141,6 @@ describe("site identity references", () => {
   });
 
   it("composes configured site entities and transforms generated entities", () => {
-    const application = defineJsonLd({
-      "@type": "SoftwareApplication",
-      "@id": "https://example.com/#product",
-      name: "Example",
-      provider: jsonLdRef("https://example.com/#organization"),
-    });
     const transformedSeo = createSeo({
       origin: "https://example.com",
       site: {
@@ -166,8 +160,18 @@ describe("site identity references", () => {
       },
       website: { searchPath: "/search?q={search_term_string}" },
       jsonLd: {
-        site: [application],
-        transform: (entry) => {
+        site: (entityIds) => [
+          defineJsonLd({
+            "@type": "SoftwareApplication",
+            "@id": "https://example.com/#product",
+            name: "Example",
+            provider: jsonLdRef(entityIds.organization),
+          }),
+        ],
+        transform: (entry, context) => {
+          expect(context.entityIds.organization).toBe(
+            "https://example.com/#organization",
+          );
           if (entry.kind === "organization") {
             return extendJsonLd(entry.document, {
               slogan: "Ship with confidence.",

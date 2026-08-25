@@ -80,6 +80,9 @@ describe("seoHead JSON-LD composition", () => {
       website: { searchPath: "/search?q={search_term_string}" },
       jsonLd: {
         transform: (entry, context) => {
+          expect(context.entityIds.organization).toBe(
+            "https://example.com/#organization",
+          );
           seenCanonicals.push(context.canonical);
           if (entry.kind === "service") return [entry.document, extra];
           if (entry.kind === "custom") return false;

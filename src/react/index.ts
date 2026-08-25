@@ -39,6 +39,7 @@ export {
 } from "./json-ld-composition";
 export type {
   JsonLdDocument,
+  JsonLdEntityIds,
   JsonLdEntry,
   JsonLdNode,
   JsonLdTransform,

@@ -18,6 +18,11 @@ export type JsonLdNode = Extract<Thing, object>;
 /** A top-level JSON-LD entity or graph ready to serialize into a script element. */
 export type JsonLdDocument = WithContext<Thing> | Graph;
 
+export interface JsonLdEntityIds {
+  organization: string;
+  website: string;
+}
+
 export type JsonLdEntry =
   | {
       kind: "organization";
@@ -39,6 +44,8 @@ export type JsonLdEntry =
 export interface JsonLdTransformContext {
   /** Canonical site origin configured through `createSeo`. */
   origin: string;
+  /** Stable identifiers for the plugin's generated site entities. */
+  entityIds: JsonLdEntityIds;
   /** Canonical page URL when composition happens for a route. */
   canonical?: string | undefined;
 }
@@ -58,7 +65,10 @@ export type JsonLdTransform = (
 
 export interface SeoJsonLdConfig {
   /** Custom entities included by `generateSiteGraphSchema`. */
-  site?: ReadonlyArray<JsonLdDocument> | undefined;
+  site?:
+    | ReadonlyArray<JsonLdDocument>
+    | ((entityIds: JsonLdEntityIds) => ReadonlyArray<JsonLdDocument>)
+    | undefined;
   /** Open composition hook for generated and custom entries. */
   transform?: JsonLdTransform | undefined;
 }

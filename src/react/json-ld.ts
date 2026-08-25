@@ -29,6 +29,7 @@ import {
   jsonLdGraph,
   jsonLdRef,
   type JsonLdDocument,
+  type JsonLdEntityIds,
   type JsonLdEntry,
 } from "./json-ld-composition";
 import { absoluteUrl, type SeoConfig } from "./site";
@@ -73,7 +74,7 @@ export interface ArticleParams {
 
 /** The JSON-LD generators, bound to one site identity. */
 export interface JsonLd {
-  readonly entityIds: { organization: string; website: string };
+  readonly entityIds: JsonLdEntityIds;
   /** Brand entity for the Knowledge Graph. Render site-wide (root layout). */
   generateOrganizationSchema: () => WithContext<Organization>;
   /** WebSite entity with a sitelinks search box. Render on the homepage. */
@@ -102,6 +103,7 @@ export function createJsonLd(config: SeoConfig): JsonLd {
   const { origin, site, organization, website } = config;
   const organizationId = `${origin}/#organization`;
   const websiteId = `${origin}/#website`;
+  const entityIds = { organization: organizationId, website: websiteId };
 
   const generateOrganizationSchema = (): WithContext<Organization> => ({
     "@context": "https://schema.org",
@@ -252,6 +254,7 @@ export function createJsonLd(config: SeoConfig): JsonLd {
       entries,
       {
         origin,
+        entityIds,
         ...(context.canonical === undefined
           ? {}
           : { canonical: context.canonical }),
@@ -260,6 +263,10 @@ export function createJsonLd(config: SeoConfig): JsonLd {
     );
 
   const generateSiteGraphSchema = (): Graph | undefined => {
+    const configuredSite =
+      typeof config.jsonLd?.site === "function"
+        ? config.jsonLd.site(entityIds)
+        : (config.jsonLd?.site ?? []);
     const entries: Array<JsonLdEntry> = [
       {
         kind: "organization",
@@ -271,7 +278,7 @@ export function createJsonLd(config: SeoConfig): JsonLd {
         source: "generated",
         document: generateWebsiteSchema(),
       },
-      ...(config.jsonLd?.site ?? []).map(
+      ...configuredSite.map(
         (document): JsonLdEntry => ({
           kind: "custom",
           source: "site",
@@ -284,7 +291,7 @@ export function createJsonLd(config: SeoConfig): JsonLd {
   };
 
   return {
-    entityIds: { organization: organizationId, website: websiteId },
+    entityIds,
     generateOrganizationSchema,
     generateWebsiteSchema,
     generateServiceSchema,
