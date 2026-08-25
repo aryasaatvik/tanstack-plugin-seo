@@ -1,3 +1,11 @@
+## tanstack-plugin-seo@0.3.0
+
+### Compose any schema.org entity
+
+Add custom site and page JSON-LD with typed helpers, stable entity references, graph composition,
+and an optional transform for extending, replacing, suppressing, or expanding generated schemas.
+Existing JSON-LD generators continue to work unchanged.
+
 ## tanstack-plugin-seo@0.2.1
 
 ### Add organization legal identity fields
