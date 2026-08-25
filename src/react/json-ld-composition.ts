@@ -96,9 +96,7 @@ export function extendJsonLd<
 
 const documentNodes = (document: JsonLdDocument): ReadonlyArray<JsonLdNode> => {
   if ("@graph" in document) {
-    return document["@graph"].filter(
-      (node): node is JsonLdNode => typeof node === "object" && node !== null,
-    );
+    return document["@graph"] as ReadonlyArray<JsonLdNode>;
   }
   const { "@context": _context, ...node } = document as unknown as Record<
     string,

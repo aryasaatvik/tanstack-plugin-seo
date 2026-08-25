@@ -116,6 +116,10 @@ describe("JSON-LD composition", () => {
         },
       ],
     });
+
+    expect(jsonLdGraph([jsonLdGraph([organization, application])])).toEqual(
+      jsonLdGraph([organization, application]),
+    );
   });
 });
 
