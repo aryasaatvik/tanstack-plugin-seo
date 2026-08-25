@@ -11,6 +11,7 @@
 import type { AnyRouteMatch, MetaDescriptor } from "@tanstack/react-router";
 
 import { resolveCrumbTrail } from "./breadcrumbs";
+import type { JsonLdDocument, JsonLdEntry } from "./json-ld-composition";
 import { absoluteUrl, type SeoConfig } from "./site";
 import { createJsonLd, type FAQItem, type JsonLd } from "./json-ld";
 
@@ -38,7 +39,9 @@ export interface PageSeoInstance {
       }
     | undefined;
   faqs?: ReadonlyArray<FAQItem> | undefined;
-  service?: { name: string; description?: string | undefined; serviceType: string } | undefined;
+  service?:
+    | { name: string; description?: string | undefined; serviceType: string }
+    | undefined;
   /** Standalone keywords meta for non-article pages; article pages derive it from tags. */
   keywords?: ReadonlyArray<string> | undefined;
   /** Visible canonical pages rendered as an ordered collection on this page. */
@@ -48,6 +51,8 @@ export interface PageSeoInstance {
         items: ReadonlyArray<{ name: string; url: string }>;
       }
     | undefined;
+  /** Additional schema.org documents for this route. */
+  jsonLd?: ReadonlyArray<JsonLdDocument> | undefined;
   /**
    * Explicit canonical path (used for canonical + og:url instead of the match pathname).
    * For routes whose canonical is computed independently of the URL, e.g. a docs splat
@@ -74,7 +79,9 @@ export interface Seo extends JsonLd {
 
 /** Strip a trailing slash from a pathname, keeping the root "/" intact. */
 function normalizePathname(pathname: string): string {
-  return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return pathname.length > 1 && pathname.endsWith("/")
+    ? pathname.slice(0, -1)
+    : pathname;
 }
 
 export function createSeo(config: SeoConfig): Seo {
@@ -84,9 +91,11 @@ export function createSeo(config: SeoConfig): Seo {
   const seoHead = (ctx: SeoHeadCtx, instance: PageSeoInstance): SeoHead => {
     const canonical = `${origin}${instance.canonicalPath ?? normalizePathname(ctx.match.pathname)}`;
     const resolvedOgTitle = instance.ogTitle ?? instance.title;
-    const resolvedOgDescription = instance.ogDescription ?? instance.description;
+    const resolvedOgDescription =
+      instance.ogDescription ?? instance.description;
     const routeSeo = ctx.match.staticData.seo;
     const { article } = instance;
+    const jsonLdEntries: Array<JsonLdEntry> = [];
 
     const meta: Array<MetaDescriptor> = [
       { title: instance.title },
@@ -111,7 +120,10 @@ export function createSeo(config: SeoConfig): Seo {
       }
       meta.push(
         { property: "article:published_time", content: article.publishedAt },
-        { property: "article:modified_time", content: article.modifiedAt ?? article.publishedAt },
+        {
+          property: "article:modified_time",
+          content: article.modifiedAt ?? article.publishedAt,
+        },
       );
       if (article.image !== undefined) {
         const imageUrl = absoluteUrl(origin, article.image);
@@ -123,8 +135,10 @@ export function createSeo(config: SeoConfig): Seo {
     }
 
     if (article) {
-      meta.push({
-        "script:ld+json": jsonLd.generateArticleSchema({
+      jsonLdEntries.push({
+        kind: "article",
+        source: "generated",
+        document: jsonLd.generateArticleSchema({
           headline: resolvedOgTitle,
           description: instance.description,
           image: article.image,
@@ -141,8 +155,10 @@ export function createSeo(config: SeoConfig): Seo {
     }
 
     if (instance.service) {
-      meta.push({
-        "script:ld+json": jsonLd.generateServiceSchema({
+      jsonLdEntries.push({
+        kind: "service",
+        source: "generated",
+        document: jsonLd.generateServiceSchema({
           name: instance.service.name,
           description: instance.service.description ?? instance.description,
           serviceType: instance.service.serviceType,
@@ -151,12 +167,18 @@ export function createSeo(config: SeoConfig): Seo {
     }
 
     if (instance.faqs) {
-      meta.push({ "script:ld+json": jsonLd.generateFAQPageSchema([...instance.faqs]) });
+      jsonLdEntries.push({
+        kind: "faq",
+        source: "generated",
+        document: jsonLd.generateFAQPageSchema([...instance.faqs]),
+      });
     }
 
     if (instance.itemList) {
-      meta.push({
-        "script:ld+json": jsonLd.generateItemListSchema(
+      jsonLdEntries.push({
+        kind: "item-list",
+        source: "generated",
+        document: jsonLd.generateItemListSchema(
           instance.itemList.name,
           instance.itemList.items,
         ),
@@ -167,13 +189,33 @@ export function createSeo(config: SeoConfig): Seo {
     // owns the BreadcrumbList; otherwise each parent repeats a progressively stale
     // trail alongside the leaf's canonical trail on nested pages.
     const isLeafMatch = ctx.matches.at(-1)?.id === ctx.match.id;
-    const trail = isLeafMatch ? (instance.breadcrumbs ?? resolveCrumbTrail(ctx.matches)) : [];
+    const trail = isLeafMatch
+      ? (instance.breadcrumbs ?? resolveCrumbTrail(ctx.matches))
+      : [];
     if (trail.length >= 2) {
-      meta.push({
-        "script:ld+json": jsonLd.generateBreadcrumbSchema(
+      jsonLdEntries.push({
+        kind: "breadcrumb",
+        source: "generated",
+        document: jsonLd.generateBreadcrumbSchema(
           trail.map((item) => ({ name: item.name, url: item.path })),
         ),
       });
+    }
+
+    if (instance.jsonLd) {
+      jsonLdEntries.push(
+        ...instance.jsonLd.map(
+          (document): JsonLdEntry => ({
+            kind: "custom",
+            source: "page",
+            document,
+          }),
+        ),
+      );
+    }
+
+    for (const document of jsonLd.composeJsonLd(jsonLdEntries, { canonical })) {
+      meta.push({ "script:ld+json": document });
     }
 
     // React's head types (JSX.IntrinsicElements['meta']) model only <meta> attributes;
