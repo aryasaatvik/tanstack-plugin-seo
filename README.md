@@ -25,13 +25,13 @@ bun add tanstack-plugin-seo
 bun add -D effect @effect/platform-bun   # only if you use the CLI
 ```
 
-| Entry | Exports | Peers |
-| --- | --- | --- |
-| `tanstack-plugin-seo` | `buildSeoGraph`, `renderSitemap`, `renderRobots`, `contentSignal`, `checkGraph`, `inspectHtml` | — |
-| `tanstack-plugin-seo/react` | `createSeo` → `seoHead`, `Breadcrumbs`, JSON-LD generators | `react`, `@tanstack/react-router` |
-| `tanstack-plugin-seo/vite` | `seoRouteConfig` coverage gate | `vite` |
-| `tanstack-plugin-seo/config` | `defineSeoConfig`, `viteGraphLoader` | `vite` |
-| `seo` bin | CLI over the same graph | `effect`, `@effect/platform-bun` (optional) |
+| Entry                        | Exports                                                                                        | Peers                                       |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `tanstack-plugin-seo`        | `buildSeoGraph`, `renderSitemap`, `renderRobots`, `contentSignal`, `checkGraph`, `inspectHtml` | —                                           |
+| `tanstack-plugin-seo/react`  | `createSeo` → `seoHead`, `Breadcrumbs`, JSON-LD generators                                     | `react`, `@tanstack/react-router`           |
+| `tanstack-plugin-seo/vite`   | `seoRouteConfig` coverage gate                                                                 | `vite`                                      |
+| `tanstack-plugin-seo/config` | `defineSeoConfig`, `viteGraphLoader`                                                           | `vite`                                      |
+| `seo` bin                    | CLI over the same graph                                                                        | `effect`, `@effect/platform-bun` (optional) |
 
 The core and React entries have **zero runtime dependencies** — everything above is a
 peer, and only the entries you import need theirs installed.
@@ -83,10 +83,11 @@ export const Route = createFileRoute("/pricing")({
       link: { title: "Pricing", description: "Simple volume pricing." },
     },
   },
-  head: (ctx) => seoHead(ctx, {
-    title: "Pricing — Example",
-    description: "Simple volume pricing.",
-  }),
+  head: (ctx) =>
+    seoHead(ctx, {
+      title: "Pricing — Example",
+      description: "Simple volume pricing.",
+    }),
 });
 ```
 
@@ -94,6 +95,74 @@ export const Route = createFileRoute("/pricing")({
 title, description, og/twitter cards, robots, and the JSON-LD each page warrants
 (BreadcrumbList always; Article, FAQPage, Service, ItemList when the instance
 declares them).
+
+### Extensible JSON-LD
+
+The built-in generators are conveniences, not a closed schema registry. Define any
+`schema-dts` entity, link it to the plugin's stable site identities, and compose one
+site graph:
+
+```ts
+import {
+  createSeo,
+  defineJsonLd,
+  extendJsonLd,
+  jsonLdRef,
+} from "tanstack-plugin-seo/react";
+
+export const seo = createSeo({
+  // site, organization, and website as above
+  jsonLd: {
+    site: (ids) => [
+      defineJsonLd({
+        "@type": "SoftwareApplication",
+        "@id": "https://example.com/#product",
+        name: "Example",
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Web",
+        provider: jsonLdRef(ids.organization),
+      }),
+    ],
+    transform: (entry) => {
+      if (entry.kind === "organization") {
+        return extendJsonLd(entry.document, {
+          slogan: "Ship with confidence.",
+        });
+      }
+      return entry.document;
+    },
+  },
+});
+
+const siteGraph = seo.generateSiteGraphSchema();
+```
+
+`generateSiteGraphSchema()` includes Organization, WebSite, and configured site
+entities in one `@graph`. Organization and WebSite use stable `#organization` and
+`#website` IDs; articles and services provided by the site reference the same
+Organization. Existing individual generators remain available and are not transformed.
+
+Add page-specific entities through `seoHead`:
+
+```ts
+head: (ctx) =>
+  seo.seoHead(ctx, {
+    title: "Example for developers",
+    description: "A focused description of the product.",
+    jsonLd: [
+      defineJsonLd({
+        "@type": "SoftwareApplication",
+        name: "Example",
+        url: "https://example.com/product",
+      }),
+    ],
+  });
+```
+
+The transform sees discriminated generated and custom entries plus `origin`,
+`canonical`, and `entityIds`. Return the document to keep it, no value (or `false`)
+to suppress it, or an array to expand it. Output preserves caller order and never
+silently deduplicates entities.
 
 **3. Serve the projections.** Build the graph from your route tree, render strings.
 
@@ -238,7 +307,11 @@ Stdout is data, stderr is status — `seo check --json | jq` just works.
 Everything the CLI checks is a pure function you can call from a test:
 
 ```ts
-import { checkGraph, hasStructuralViolations, inspectHtml } from "tanstack-plugin-seo";
+import {
+  checkGraph,
+  hasStructuralViolations,
+  inspectHtml,
+} from "tanstack-plugin-seo";
 
 expect(hasStructuralViolations(checkGraph(loadSeoGraph()))).toBe(false);
 
