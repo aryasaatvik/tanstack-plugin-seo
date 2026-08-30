@@ -149,6 +149,56 @@ describe("audit report diff", () => {
     });
   });
 
+  it("fails when newly added scanner coverage is already in error", () => {
+    const after = report();
+    const withFailedScanner = {
+      ...after,
+      results: [
+        ...after.results,
+        {
+          scanner: "lighthouse",
+          target: "https://example.test/",
+          status: "error" as const,
+          findings: [],
+          error: "fixture lighthouse failed",
+        },
+      ],
+    };
+
+    expect(success(report(), withFailedScanner)).toMatchObject({
+      outcome: "regressed",
+      summary: { scannerRegressions: 1 },
+      changes: [
+        expect.objectContaining({
+          _tag: "ScannerAdded",
+          scanner: "lighthouse",
+          status: "error",
+        }),
+      ],
+    });
+  });
+
+  it("keeps same-severity finding payload changes non-blocking", () => {
+    const before = {
+      ...finding("editorial"),
+      message: "Original editorial wording.",
+      observed: { length: 8 },
+    };
+    const after = {
+      ...finding("editorial"),
+      message: "Updated editorial wording.",
+      observed: { length: 9 },
+    };
+
+    expect(
+      success(report({ findings: [before] }), report({ findings: [after] })),
+    ).toMatchObject({
+      outcome: "changed",
+      summary: { informationalChanges: 1 },
+      changes: [expect.objectContaining({ _tag: "FindingChanged" })],
+    });
+  });
+
   it("rejects ambiguous and internally inconsistent reports", () => {
     const validDuplicate = report();
     const duplicate = {

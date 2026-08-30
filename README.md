@@ -353,7 +353,9 @@ the command exit 1; operational and schema failures write only to stderr.
 Raw scanner evidence remains in the source artifacts but is not interpreted by
 the generic comparator. Performance gates should be expressed as scanner
 findings with explicit thresholds rather than inferred from volatile Lighthouse
-measurements.
+measurements. Finding payloads (`message`, `fix`, `observed`, and `expected`)
+remain semantic: same-severity changes are reported as non-blocking `changed`
+outcomes.
 
 ## Testing
 

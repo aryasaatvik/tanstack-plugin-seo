@@ -3,6 +3,7 @@ import { Data, Schema } from "effect";
 import {
   AuditFinding,
   FindingSeverity,
+  ScannerStatus,
   type AuditReport,
 } from "./model";
 
@@ -46,6 +47,7 @@ const TargetRemoved = Schema.TaggedStruct("TargetRemoved", {
 const ScannerAdded = Schema.TaggedStruct("ScannerAdded", {
   target: Schema.String,
   scanner: Schema.String,
+  status: ScannerStatus,
 });
 const ScannerRemoved = Schema.TaggedStruct("ScannerRemoved", {
   target: Schema.String,
@@ -297,8 +299,11 @@ const summarize = (changes: ReadonlyArray<AuditDiffChange>): AuditDiffSummary =>
         coverageRegressions++;
         break;
       case "TargetAdded":
-      case "ScannerAdded":
         informationalChanges++;
+        break;
+      case "ScannerAdded":
+        if (change.status === "error") scannerRegressions++;
+        else informationalChanges++;
         break;
     }
   }
@@ -378,6 +383,7 @@ export const compareAuditReports = (
         _tag: "ScannerAdded",
         target: result.target,
         scanner: result.scanner,
+        status: result.status,
       });
     }
   }

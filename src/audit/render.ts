@@ -75,7 +75,7 @@ const renderDiffChange = (change: AuditDiffChange): string => {
     case "TargetRemoved":
       return `- target coverage · ${change.target}`;
     case "ScannerAdded":
-      return `+ scanner coverage ${change.scanner} · ${change.target}`;
+      return `+ scanner coverage ${change.scanner} (${change.status}) · ${change.target}`;
     case "ScannerRemoved":
       return `- scanner coverage ${change.scanner} · ${change.target}`;
   }
@@ -127,8 +127,11 @@ export const renderAuditDiff = (diff: AuditDiff): string => {
         improvements.push(change);
         break;
       case "TargetAdded":
-      case "ScannerAdded":
         informational.push(change);
+        break;
+      case "ScannerAdded":
+        if (change.status === "error") regressions.push(change);
+        else informational.push(change);
         break;
     }
   }
