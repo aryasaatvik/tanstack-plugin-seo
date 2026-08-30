@@ -8,6 +8,7 @@ import { makeHttpScanner } from "../../src/audit/scanners/http";
 import {
   makeLighthouseScanner,
   runLighthouseProcess,
+  windowsProcessTreeKill,
 } from "../../src/audit/scanners/lighthouse";
 
 const emptyLighthouseRun = (
@@ -113,5 +114,12 @@ describe("scanner failure regressions", () => {
       runLighthouseProcess(fixture, [], 25, 25),
     ).rejects.toThrow("Lighthouse timed out after 25ms");
     expect(performance.now() - startedAt).toBeLessThan(1_000);
+  });
+
+  it("uses recursive forced termination for Windows process trees", () => {
+    expect(windowsProcessTreeKill(4312)).toEqual({
+      command: "taskkill",
+      arguments: ["/pid", "4312", "/T", "/F"],
+    });
   });
 });

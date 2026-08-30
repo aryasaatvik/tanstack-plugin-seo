@@ -175,6 +175,13 @@ export const lighthouseChromeFlags = (proxyUrl: string): string =>
     "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
   ].join(" ");
 
+export const windowsProcessTreeKill = (
+  pid: number,
+): { readonly command: string; readonly arguments: readonly string[] } => ({
+  command: "taskkill",
+  arguments: ["/pid", String(pid), "/T", "/F"],
+});
+
 export const runLighthouseProcess = async (
   cli: string,
   arguments_: ReadonlyArray<string>,
@@ -192,6 +199,25 @@ export const runLighthouseProcess = async (
   });
   const signal = (name: NodeJS.Signals): void => {
     if (child.pid === undefined) return;
+    if (process.platform === "win32" && name === "SIGKILL") {
+      const taskkill = windowsProcessTreeKill(child.pid);
+      const killer = spawn(taskkill.command, taskkill.arguments, {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      const fallback = () => {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          // The process already exited between the timeout and escalation.
+        }
+      };
+      killer.once("error", fallback);
+      killer.once("exit", (code) => {
+        if (code !== 0) fallback();
+      });
+      return;
+    }
     try {
       if (process.platform === "win32") child.kill(name);
       else process.kill(-child.pid, name);
