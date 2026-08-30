@@ -30,6 +30,26 @@ type RunResult = {
   readonly stderr: string;
 };
 
+type AuditFixtureFinding = {
+  readonly scanner: string;
+  readonly target: string;
+  readonly severity: "structural" | "editorial";
+  readonly rule: string;
+  readonly message: string;
+};
+
+type AuditFixtureReport = {
+  readonly schemaVersion: unknown;
+  generatedAt: string;
+  readonly targets: Array<string>;
+  readonly results: Array<{
+    readonly scanner: string;
+    readonly target: string;
+    readonly findings: Array<AuditFixtureFinding>;
+  }>;
+  readonly findings: Array<AuditFixtureFinding>;
+};
+
 const root = path.resolve(import.meta.dir, "..");
 const temporary = await mkdtemp(path.join(tmpdir(), "tanstack-plugin-seo-release-"));
 const packDirectory = path.join(temporary, "pack");
@@ -265,7 +285,7 @@ try {
   }
 
   const help = await runSuccessfully([executable, "--help"], installDirectory);
-  if (!help.includes("seo <subcommand>") || !help.includes("audit") || !help.includes("check") || !help.includes("sitemap")) {
+  if (!help.includes("seo <subcommand>") || !help.includes("audit") || !help.includes("diff") || !help.includes("check") || !help.includes("sitemap")) {
     throw new Error("Packed seo bin did not print the expected command tree");
   }
   const version = await runSuccessfully([executable, "--version"], installDirectory);
@@ -305,12 +325,57 @@ try {
       [executable, "audit", fixture.url.href, "--allow-private", "--probe-only", "--json"],
       installDirectory,
     );
-    const audit = JSON.parse(auditOutput) as {
-      readonly schemaVersion?: unknown;
-      readonly findings?: ReadonlyArray<unknown>;
-    };
-    if (audit.schemaVersion !== 1 || audit.findings?.length !== 0) {
+    const audit = JSON.parse(auditOutput) as AuditFixtureReport;
+    if (audit.schemaVersion !== 1 || audit.findings.length !== 0) {
       throw new Error("Packed seo audit did not return the expected clean report");
+    }
+
+    const beforePath = path.join(installDirectory, "audit-before.json");
+    const afterPath = path.join(installDirectory, "audit-after.json");
+    await Bun.write(beforePath, `${JSON.stringify(audit, null, 2)}\n`);
+    const after = structuredClone(audit);
+    after.generatedAt = "2026-08-30T00:05:00.000Z";
+    await Bun.write(afterPath, `${JSON.stringify(after, null, 2)}\n`);
+    const unchangedOutput = await runSuccessfully(
+      [executable, "diff", beforePath, afterPath, "--json"],
+      installDirectory,
+    );
+    const unchanged = JSON.parse(unchangedOutput) as {
+      readonly kind?: unknown;
+      readonly outcome?: unknown;
+    };
+    if (unchanged.kind !== "audit-diff" || unchanged.outcome !== "unchanged") {
+      throw new Error("Packed seo diff did not ignore timestamp volatility");
+    }
+
+    const regression = structuredClone(after);
+    const target = regression.targets[0];
+    const result = regression.results[0];
+    if (target === undefined || result === undefined) {
+      throw new Error("Packed audit fixture did not contain a target and scanner result");
+    }
+    const finding: AuditFixtureFinding = {
+      scanner: "rules",
+      target,
+      severity: "structural",
+      rule: "release-fixture-regression",
+      message: "Representative structural regression.",
+    };
+    result.findings.push(finding);
+    regression.findings.push(finding);
+    await Bun.write(afterPath, `${JSON.stringify(regression, null, 2)}\n`);
+    const regressed = await run(
+      [executable, "diff", beforePath, afterPath, "--json"],
+      installDirectory,
+    );
+    if (regressed.exitCode !== 1 || !regressed.stderr.includes("1 structural")) {
+      throw new Error("Packed seo diff did not fail on a structural regression");
+    }
+    const regressedOutput = JSON.parse(regressed.stdout) as {
+      readonly outcome?: unknown;
+    };
+    if (regressedOutput.outcome !== "regressed") {
+      throw new Error("Packed seo diff did not preserve JSON output on regression");
     }
   } finally {
     await fixture.stop(true);
