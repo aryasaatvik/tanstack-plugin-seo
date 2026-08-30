@@ -23,6 +23,7 @@ flowchart LR
 ```bash
 bun add tanstack-plugin-seo
 bun add -D effect @effect/platform-bun   # only if you use the CLI
+bun add -D lighthouse                    # only for `seo audit` performance evidence
 ```
 
 | Entry                        | Exports                                                                                        | Peers                                       |
@@ -31,6 +32,7 @@ bun add -D effect @effect/platform-bun   # only if you use the CLI
 | `tanstack-plugin-seo/react`  | `createSeo` → `seoHead`, `Breadcrumbs`, JSON-LD generators                                     | `react`, `@tanstack/react-router`           |
 | `tanstack-plugin-seo/vite`   | `seoRouteConfig` coverage gate                                                                 | `vite`                                      |
 | `tanstack-plugin-seo/config` | `defineSeoConfig`, `viteGraphLoader`                                                           | `vite`                                      |
+| `tanstack-plugin-seo/audit`  | Audit services, scanner protocol, rules, and report schemas                                    | `effect`                                    |
 | `seo` bin                    | CLI over the same graph                                                                        | `effect`, `@effect/platform-bun` (optional) |
 
 The core and React entries have **zero runtime dependencies** — everything above is a
@@ -271,9 +273,9 @@ not hand out as tenant/org slugs).
 
 ## CLI
 
-The CLI acquires your graph through `seo.config.ts` at the app root — the
-`viteGraphLoader` evaluates your graph module inside a headless Vite server, so
-path aliases, content plugins, and virtual modules all resolve:
+The graph commands acquire your graph through `seo.config.ts` at the app root —
+the `viteGraphLoader` evaluates your graph module inside a headless Vite server,
+so path aliases, content plugins, and virtual modules all resolve:
 
 ```ts
 // seo.config.ts
@@ -301,6 +303,29 @@ seo robots                # print robots.txt
 ```
 
 Stdout is data, stderr is status — `seo check --json | jq` just works.
+
+### Audit any website
+
+`seo audit` is framework-independent and does not need `seo.config.ts`. It
+validates target URLs before making requests, follows redirects through the same
+validation boundary, inspects the rendered document and discovery files, and
+can collect Lighthouse evidence through a validating proxy.
+
+```bash
+seo audit https://example.com
+seo audit https://example.com https://example.com/docs --json | jq
+seo audit https://localhost:3000 --allow-private --probe-only
+```
+
+The report keeps evidence and findings separate: scanners collect observations;
+pure rules classify structural failures and editorial quality issues. One failed
+scanner does not erase successful evidence from the others. JSON mode emits one
+versioned document on stdout, while diagnostics and artifact paths stay on
+stderr.
+
+Use `--probe-only` when Lighthouse is unavailable or unnecessary. Private and
+reserved destinations are rejected unless `--allow-private` is explicit; that
+flag is intended for local development and CI fixtures.
 
 ## Testing
 
