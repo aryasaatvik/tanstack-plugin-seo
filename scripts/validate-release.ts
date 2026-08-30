@@ -74,6 +74,14 @@ const runSuccessfully = async (
 const stripAnsi = (output: string): string =>
   output.replace(/\u001B\[[0-?]*[ -/]*[@-~]/g, "");
 
+const parsePackOutput = (output: string): ReadonlyArray<PackResult> => {
+  const normalized = stripAnsi(output).trim();
+  const jsonStart = normalized.lastIndexOf("\n[");
+  return JSON.parse(
+    jsonStart === -1 ? normalized : normalized.slice(jsonStart + 1),
+  ) as ReadonlyArray<PackResult>;
+};
+
 const assertPackageIdentity = (manifest: PackageManifest): void => {
   if (manifest.name !== packageName) {
     throw new Error(`Package name must be ${packageName}, received ${manifest.name}`);
@@ -133,14 +141,12 @@ try {
   ) as PackageManifest;
   assertPackageIdentity(manifest);
 
-  await runSuccessfully(["bun", "run", "build"], root);
   const packOutput = await runSuccessfully(
     [
       "npm",
       "pack",
       "--json",
       "--color=false",
-      "--ignore-scripts",
       "--pack-destination",
       packDirectory,
     ],
@@ -153,7 +159,7 @@ try {
       },
     },
   );
-  const [packed] = JSON.parse(stripAnsi(packOutput)) as ReadonlyArray<PackResult>;
+  const [packed] = parsePackOutput(packOutput);
   if (packed === undefined) throw new Error("npm pack did not produce an artifact");
   if (packed.name !== manifest.name || packed.version !== manifest.version) {
     throw new Error("Packed artifact metadata does not match package.json");
