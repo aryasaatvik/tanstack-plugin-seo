@@ -19,12 +19,15 @@ const allowPrivate = Flag.boolean("allow-private").pipe(
   Flag.withDescription(
     "Allow localhost and private addresses (local development only)",
   ),
+  Flag.withDefault(false),
 );
 const probeOnly = Flag.boolean("probe-only").pipe(
   Flag.withDescription("Run HTTP probes without Lighthouse"),
+  Flag.withDefault(false),
 );
 const hosted = Flag.boolean("hosted").pipe(
   Flag.withDescription("Opt in to external agent-readiness scanners"),
+  Flag.withDefault(false),
 );
 const formFactor = Flag.choice("form-factor", [
   "mobile",
