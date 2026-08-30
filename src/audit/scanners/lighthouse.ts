@@ -335,7 +335,11 @@ export const makeLighthouseScanner = (
   scan: (input: ScannerInput) =>
     Effect.fn("SeoAudit.scanLighthouse")(function* () {
       const target = new URL(input.target.url);
-      const requestedFormFactors = input.options.formFactors ?? ["mobile"];
+      const requestedFormFactors =
+        input.options.formFactors === undefined ||
+        input.options.formFactors.length === 0
+          ? (["mobile"] as const)
+          : input.options.formFactors;
       const requestedRuns = Math.max(1, Math.floor(input.options.runs ?? 1));
       const runs = [...new Set(requestedFormFactors)].flatMap((formFactor) =>
         Array.from({ length: requestedRuns }, (_, index) => ({

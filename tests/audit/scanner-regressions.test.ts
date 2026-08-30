@@ -81,6 +81,28 @@ describe("scanner failure regressions", () => {
     expect(observation.evidence).toHaveLength(4);
   });
 
+  it("defaults an explicitly empty form-factor list to mobile", async () => {
+    const calls: Array<string> = [];
+    const lighthouse = makeLighthouseScanner(
+      { allowPrivate: false },
+      {
+        run: async (options) => {
+          calls.push(`${options.formFactor}:${options.run}`);
+          return emptyLighthouseRun(options.formFactor, options.run);
+        },
+      },
+    );
+
+    await Effect.runPromise(
+      lighthouse.scan({
+        target: { url: "https://example.test/" },
+        options: { formFactors: [] },
+      }),
+    );
+
+    expect(calls).toEqual(["mobile:1"]);
+  });
+
   it("escalates a Lighthouse timeout from SIGTERM to SIGKILL", async () => {
     const fixture = fileURLToPath(
       new URL("../fixtures/ignore-term.mjs", import.meta.url),
