@@ -1,7 +1,7 @@
 {
   "name": "tanstack-plugin-seo",
   "version": "0.3.0",
-  "description": "Route-declared SEO for TanStack Router: graph, sitemap/robots, React head helpers, Vite coverage gate, and CLI.",
+  "description": "SEO tooling for any website, with route-declared SEO and first-class TanStack Router support.",
   "keywords": [
     "seo",
     "tanstack",
@@ -9,6 +9,8 @@
     "sitemap",
     "robots",
     "json-ld",
+    "lighthouse",
+    "audit",
     "vite"
   ],
   "homepage": "https://github.com/aryasaatvik/tanstack-plugin-seo#readme",
@@ -47,6 +49,10 @@
     "./config": {
       "types": "./dist/config.d.ts",
       "import": "./dist/config.js"
+    },
+    "./audit": {
+      "types": "./dist/audit.d.ts",
+      "import": "./dist/audit.js"
     }
   },
   "publishConfig": {
@@ -75,6 +81,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "19.2.18",
     "effect": "4.0.0-beta.102",
+    "lighthouse": "13.4.1",
     "react": "19.2.8",
     "schema-dts": "^2.0.0",
     "tegami": "1.4.0",
@@ -87,6 +94,7 @@
     "@effect/platform-bun": ">=4.0.0-beta.0",
     "@tanstack/react-router": "^1.170.0",
     "effect": ">=4.0.0-beta.0",
+    "lighthouse": ">=13.0.0",
     "react": "^19.0.0",
     "vite": "^8.0.0"
   },
@@ -95,6 +103,9 @@
       "optional": true
     },
     "effect": {
+      "optional": true
+    },
+    "lighthouse": {
       "optional": true
     },
     "react": {

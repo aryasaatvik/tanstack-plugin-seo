@@ -110,12 +110,13 @@ const assertPackageIdentity = (manifest: PackageManifest): void => {
     "./react": { types: "./dist/react.d.ts", import: "./dist/react.js" },
     "./vite": { types: "./dist/vite.d.ts", import: "./dist/vite.js" },
     "./config": { types: "./dist/config.d.ts", import: "./dist/config.js" },
+    "./audit": { types: "./dist/audit.d.ts", import: "./dist/audit.js" },
   };
   if (JSON.stringify(manifest.exports) !== JSON.stringify(expectedExports)) {
     throw new Error("Package exports do not match the supported public entry points");
   }
 
-  for (const peer of ["effect", "@effect/platform-bun"] as const) {
+  for (const peer of ["effect", "@effect/platform-bun", "lighthouse"] as const) {
     if (manifest.peerDependencies[peer] === undefined) {
       throw new Error(`Package must declare ${peer} as a peer dependency`);
     }
@@ -175,6 +176,8 @@ try {
     "dist/vite.d.ts",
     "dist/config.js",
     "dist/config.d.ts",
+    "dist/audit.js",
+    "dist/audit.d.ts",
     "dist/cli.js",
     "README.md",
     "LICENSE",
@@ -253,7 +256,7 @@ try {
     [
       "bun",
       "-e",
-      `await Promise.all([import(${JSON.stringify(packageName)}), import(${JSON.stringify(`${packageName}/react`)}), import(${JSON.stringify(`${packageName}/vite`)}), import(${JSON.stringify(`${packageName}/config`)})]); console.log("public exports ok")`,
+      `await Promise.all([import(${JSON.stringify(packageName)}), import(${JSON.stringify(`${packageName}/react`)}), import(${JSON.stringify(`${packageName}/vite`)}), import(${JSON.stringify(`${packageName}/config`)}), import(${JSON.stringify(`${packageName}/audit`)})]); console.log("public exports ok")`,
     ],
     installDirectory,
   );
@@ -262,7 +265,7 @@ try {
   }
 
   const help = await runSuccessfully([executable, "--help"], installDirectory);
-  if (!help.includes("seo <subcommand>") || !help.includes("check") || !help.includes("sitemap")) {
+  if (!help.includes("seo <subcommand>") || !help.includes("audit") || !help.includes("check") || !help.includes("sitemap")) {
     throw new Error("Packed seo bin did not print the expected command tree");
   }
   const version = await runSuccessfully([executable, "--version"], installDirectory);
@@ -279,6 +282,38 @@ try {
   const check = JSON.parse(checkOutput) as { readonly ok?: unknown; readonly structural?: unknown };
   if (check.ok !== true || check.structural !== 0) {
     throw new Error("Packed seo check did not validate the representative consumer config");
+  }
+
+  const fixture = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch(request) {
+      const url = new URL(request.url);
+      if (url.pathname === "/robots.txt") return new Response("User-agent: *\nAllow: /\n");
+      if (url.pathname === "/sitemap.xml") {
+        return new Response("<urlset/>", { headers: { "content-type": "application/xml" } });
+      }
+      if (url.pathname === "/llms.txt") return new Response("# Fixture\n");
+      return new Response(
+        `<!doctype html><title>Representative packed audit fixture</title><meta name="description" content="A representative packed audit fixture with enough descriptive content for deterministic release validation."><link rel="canonical" href="${url.origin}/">`,
+        { headers: { "content-type": "text/html" } },
+      );
+    },
+  });
+  try {
+    const auditOutput = await runSuccessfully(
+      [executable, "audit", fixture.url.href, "--allow-private", "--probe-only", "--json"],
+      installDirectory,
+    );
+    const audit = JSON.parse(auditOutput) as {
+      readonly schemaVersion?: unknown;
+      readonly findings?: ReadonlyArray<unknown>;
+    };
+    if (audit.schemaVersion !== 1 || audit.findings?.length !== 0) {
+      throw new Error("Packed seo audit did not return the expected clean report");
+    }
+  } finally {
+    await fixture.stop(true);
   }
 
   console.log(`Validated ${packed.filename} from an isolated temporary consumer`);

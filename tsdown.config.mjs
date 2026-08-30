@@ -16,6 +16,7 @@ export default defineConfig({
     react: "src/react/index.ts",
     vite: "src/vite/index.ts",
     config: "src/config/index.ts",
+    audit: "src/audit/index.ts",
     cli: "src/cli/bin.ts",
   },
   format: ["esm"],
