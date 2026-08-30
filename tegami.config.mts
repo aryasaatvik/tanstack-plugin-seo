@@ -25,7 +25,13 @@ if (rootPackage.name !== "tanstack-plugin-seo") {
 }
 
 const paper = tegami({
-  npm: { client: "bun" },
+  npm: {
+    client: "bun",
+    trustedPublish: {
+      provider: "github",
+      workflow: "publish.yml",
+    },
+  },
   packages: {
     "tanstack-plugin-seo": {},
   },
