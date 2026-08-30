@@ -1,10 +1,10 @@
 core:changelogs:
-  - content: "---\npackages:\n  tanstack-plugin-seo:\n    type: patch\n---\n\n### Default optional CLI switches\n\nTreat omitted boolean switches as `false` so `seo audit` and the shared `--json` option work without requiring unrelated flags.\n"
-    filename: 2026-08-30-optional-cli-flags.md
+  - content: "---\npackages:\n  tanstack-plugin-seo:\n    type: minor\n---\n\n### Compare timestamped SEO audits\n\nAdd `seo diff <before.json> <after.json>` with deterministic human and JSON\noutput, schema validation, and regression-aware exit behavior. Structural\nfindings, scanner failures, and lost coverage fail the command, while editorial\nchanges and volatile scanner evidence remain non-blocking.\n"
+    filename: 2026-08-30-seo-audit-diff.md
     v: 0.0.0
 core:packages:
   - changelogIds:
-      - 2026-08-30-optional-cli-flags.md
+      - 2026-08-30-seo-audit-diff.md
     id: npm:tanstack-plugin-seo
     updated: true
 npm:packages:
