@@ -199,7 +199,7 @@ export const runLighthouseProcess = async (
   });
   const signal = (name: NodeJS.Signals): void => {
     if (child.pid === undefined) return;
-    if (process.platform === "win32" && name === "SIGKILL") {
+    if (process.platform === "win32") {
       const taskkill = windowsProcessTreeKill(child.pid);
       const killer = spawn(taskkill.command, taskkill.arguments, {
         stdio: "ignore",
@@ -219,8 +219,7 @@ export const runLighthouseProcess = async (
       return;
     }
     try {
-      if (process.platform === "win32") child.kill(name);
-      else process.kill(-child.pid, name);
+      process.kill(-child.pid, name);
     } catch {
       child.kill(name);
     }
