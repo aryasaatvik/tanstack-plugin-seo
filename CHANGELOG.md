@@ -1,3 +1,9 @@
+## tanstack-plugin-seo@0.4.1
+
+### Default optional CLI switches
+
+Treat omitted boolean switches as `false` so `seo audit` and the shared `--json` option work without requiring unrelated flags.
+
 ## tanstack-plugin-seo@0.4.0
 
 ### Audit any website from the CLI

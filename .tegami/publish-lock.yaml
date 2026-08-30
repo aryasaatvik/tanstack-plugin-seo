@@ -1,10 +1,10 @@
 core:changelogs:
-  - content: "---\npackages:\n  tanstack-plugin-seo:\n    type: minor\n---\n\n### Audit any website from the CLI\n\nAdd a framework-independent `seo audit` command and public audit toolkit with composable Effect scanners, pure SEO rules, hardened network validation, Lighthouse evidence, and versioned human or JSON reports.\n"
-    filename: 2026-08-30-general-seo-audit.md
+  - content: "---\npackages:\n  tanstack-plugin-seo:\n    type: patch\n---\n\n### Default optional CLI switches\n\nTreat omitted boolean switches as `false` so `seo audit` and the shared `--json` option work without requiring unrelated flags.\n"
+    filename: 2026-08-30-optional-cli-flags.md
     v: 0.0.0
 core:packages:
   - changelogIds:
-      - 2026-08-30-general-seo-audit.md
+      - 2026-08-30-optional-cli-flags.md
     id: npm:tanstack-plugin-seo
     updated: true
 npm:packages:
