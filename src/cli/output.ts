@@ -22,6 +22,7 @@ export class SeoCliError extends Data.TaggedError("SeoCliError")<{
 /** Machine-readable output. When set, stdout is exactly the JSON payload. */
 export const jsonFlag = Flag.boolean("json").pipe(
   Flag.withDescription("Emit the payload as JSON on stdout (no status, no color)"),
+  Flag.withDefault(false),
 );
 
 /**
