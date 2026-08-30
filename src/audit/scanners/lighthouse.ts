@@ -175,12 +175,14 @@ export const lighthouseChromeFlags = (proxyUrl: string): string =>
     "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
   ].join(" ");
 
-const runProcess = async (
+export const runLighthouseProcess = async (
   cli: string,
   arguments_: ReadonlyArray<string>,
   timeoutMs: number,
+  killGraceMs = 1_000,
 ): Promise<void> => {
   const child = spawn(process.execPath, [cli, ...arguments_], {
+    detached: process.platform !== "win32",
     stdio: ["ignore", "ignore", "pipe"],
   });
   let stderr = "";
@@ -188,11 +190,45 @@ const runProcess = async (
   child.stderr.on("data", (chunk: string) => {
     if (stderr.length < 16_000) stderr += chunk;
   });
-  const timeout = setTimeout(() => child.kill("SIGTERM"), timeoutMs);
+  const signal = (name: NodeJS.Signals): void => {
+    if (child.pid === undefined) return;
+    try {
+      if (process.platform === "win32") child.kill(name);
+      else process.kill(-child.pid, name);
+    } catch {
+      child.kill(name);
+    }
+  };
+  let timedOut = false;
+  let forceKill: ReturnType<typeof setTimeout> | undefined;
+  let abandon: ReturnType<typeof setTimeout> | undefined;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   const exitCode = await new Promise<number>((resolveExit, reject) => {
+    timeout = setTimeout(() => {
+      timedOut = true;
+      signal("SIGTERM");
+      forceKill = setTimeout(() => signal("SIGKILL"), killGraceMs);
+      abandon = setTimeout(
+        () =>
+          reject(
+            new LighthouseError({
+              message: `Lighthouse timed out after ${timeoutMs}ms and did not exit after SIGKILL`,
+            }),
+          ),
+        killGraceMs * 2,
+      );
+    }, timeoutMs);
     child.once("error", reject);
     child.once("exit", (code) => resolveExit(code ?? 1));
-  }).finally(() => clearTimeout(timeout));
+  }).finally(() => {
+    if (timeout !== undefined) clearTimeout(timeout);
+    if (forceKill !== undefined) clearTimeout(forceKill);
+    if (abandon !== undefined) clearTimeout(abandon);
+  });
+  if (timedOut)
+    throw new LighthouseError({
+      message: `Lighthouse timed out after ${timeoutMs}ms`,
+    });
   if (exitCode !== 0)
     throw new LighthouseError({
       message: `Lighthouse exited with ${exitCode}${stderr.trim() ? `: ${stderr.trim()}` : ""}`,
@@ -242,7 +278,7 @@ const runLighthouseInDirectory = async (
       `--chrome-flags=${lighthouseChromeFlags(proxy.url)}`,
     ];
     if (options.formFactor === "desktop") args.push("--preset=desktop");
-    await runProcess(cli, args, options.timeoutMs ?? 180_000);
+    await runLighthouseProcess(cli, args, options.timeoutMs ?? 180_000);
     return parseLighthouseResult(
       JSON.parse(await readFile(output, "utf8")),
       options.url.href,
@@ -290,20 +326,34 @@ export const runLighthouseEffect = Effect.fn("SeoAudit.runLighthouse")(
 
 export const makeLighthouseScanner = (
   options: Omit<LighthouseOptions, "url" | "formFactor" | "run">,
+  dependencies: {
+    readonly run?: (options: LighthouseOptions) => Promise<LighthouseRun>;
+  } = {},
 ): Scanner => ({
   id: "lighthouse",
   description: "Lighthouse performance and accessibility measurements",
   scan: (input: ScannerInput) =>
     Effect.fn("SeoAudit.scanLighthouse")(function* () {
       const target = new URL(input.target.url);
-      const formFactor = input.options.formFactors?.[0] ?? "mobile";
-      const runs = Math.max(1, Math.floor(input.options.runs ?? 1));
+      const requestedFormFactors = input.options.formFactors ?? ["mobile"];
+      const requestedRuns = Math.max(1, Math.floor(input.options.runs ?? 1));
+      const runs = [...new Set(requestedFormFactors)].flatMap((formFactor) =>
+        Array.from({ length: requestedRuns }, (_, index) => ({
+          formFactor,
+          run: index + 1,
+        })),
+      );
       const observations = yield* Effect.forEach(
-        Array.from({ length: runs }, (_, index) => index + 1),
-        (run) =>
+        runs,
+        ({ formFactor, run }) =>
           Effect.tryPromise({
             try: () =>
-              runLighthouse({ ...options, url: target, formFactor, run }),
+              (dependencies.run ?? runLighthouse)({
+                ...options,
+                url: target,
+                formFactor,
+                run,
+              }),
             catch: (cause) =>
               new ScannerFailure({
                 scanner: "lighthouse",

@@ -439,7 +439,7 @@ export const makeHttpScanner = (
   scan: (input: ScannerInput) =>
     Effect.fn("SeoAudit.scanHttp")(function* () {
       const target = new URL(input.target.url);
-      return yield* Effect.tryPromise({
+      const evidence = yield* Effect.tryPromise({
         try: () =>
           probeAll(buildProbeRequests([target], options.discovery), options),
         catch: (cause) =>
@@ -449,6 +449,17 @@ export const makeHttpScanner = (
             message: errorMessage(cause),
             cause,
           }),
-      }).pipe(Effect.map((evidence) => ({ evidence })));
+      });
+      const acquisitionErrors = evidence.flatMap((probe) =>
+        probe.status === null && probe.error !== null ? [probe.error] : [],
+      );
+      if (acquisitionErrors.length === evidence.length) {
+        return yield* new ScannerFailure({
+          scanner: "http",
+          target: target.href,
+          message: `Every HTTP probe failed: ${[...new Set(acquisitionErrors)].join("; ")}`,
+        });
+      }
+      return { evidence };
     })(),
 });
