@@ -37,9 +37,14 @@ const installDirectory = path.join(temporary, "consumer");
 const packageName = "tanstack-plugin-seo";
 const repositoryUrl = "git+https://github.com/aryasaatvik/tanstack-plugin-seo.git";
 
-const run = async (command: ReadonlyArray<string>, cwd: string): Promise<RunResult> => {
+const run = async (
+  command: ReadonlyArray<string>,
+  cwd: string,
+  options: { readonly env?: Record<string, string | undefined> } = {},
+): Promise<RunResult> => {
   const child = Bun.spawn(command, {
     cwd,
+    env: options.env,
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe",
@@ -52,8 +57,12 @@ const run = async (command: ReadonlyArray<string>, cwd: string): Promise<RunResu
   return { exitCode, stdout, stderr };
 };
 
-const runSuccessfully = async (command: ReadonlyArray<string>, cwd: string): Promise<string> => {
-  const result = await run(command, cwd);
+const runSuccessfully = async (
+  command: ReadonlyArray<string>,
+  cwd: string,
+  options: { readonly env?: Record<string, string | undefined> } = {},
+): Promise<string> => {
+  const result = await run(command, cwd, options);
   if (result.exitCode !== 0) {
     throw new Error(
       `${command.join(" ")} failed (${result.exitCode})\n${result.stdout}${result.stderr}`,
@@ -61,6 +70,9 @@ const runSuccessfully = async (command: ReadonlyArray<string>, cwd: string): Pro
   }
   return result.stdout;
 };
+
+const stripAnsi = (output: string): string =>
+  output.replace(/\u001B\[[0-?]*[ -/]*[@-~]/g, "");
 
 const assertPackageIdentity = (manifest: PackageManifest): void => {
   if (manifest.name !== packageName) {
@@ -133,8 +145,15 @@ try {
       packDirectory,
     ],
     root,
+    {
+      env: {
+        ...process.env,
+        FORCE_COLOR: undefined,
+        NO_COLOR: "1",
+      },
+    },
   );
-  const [packed] = JSON.parse(packOutput) as ReadonlyArray<PackResult>;
+  const [packed] = JSON.parse(stripAnsi(packOutput)) as ReadonlyArray<PackResult>;
   if (packed === undefined) throw new Error("npm pack did not produce an artifact");
   if (packed.name !== manifest.name || packed.version !== manifest.version) {
     throw new Error("Packed artifact metadata does not match package.json");
