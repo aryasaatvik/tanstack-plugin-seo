@@ -1,4 +1,19 @@
 export { Audit, InvalidTarget, makeAudit } from "./audit";
+export {
+  AuditComparisonResult,
+  AuditDiff,
+  AuditDiffChange,
+  AuditDiffOutcome,
+  AuditDiffSummary,
+  compareAuditReports,
+} from "./diff";
+export type {
+  AuditComparisonResult as AuditComparisonResultValue,
+  AuditDiff as AuditDiffValue,
+  AuditDiffChange as AuditDiffChangeValue,
+  AuditDiffOutcome as AuditDiffOutcomeValue,
+  AuditDiffSummary as AuditDiffSummaryValue,
+} from "./diff";
 export { AuditLayer, AuditLive } from "./layers";
 export type { AuditError, AuditRequest, AuditService } from "./audit";
 export {
