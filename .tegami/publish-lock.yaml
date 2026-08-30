@@ -1,0 +1,11 @@
+core:changelogs:
+  - content: "---\npackages:\n  tanstack-plugin-seo:\n    type: minor\n---\n\n### Audit any website from the CLI\n\nAdd a framework-independent `seo audit` command and public audit toolkit with composable Effect scanners, pure SEO rules, hardened network validation, Lighthouse evidence, and versioned human or JSON reports.\n"
+    filename: 2026-08-30-general-seo-audit.md
+    v: 0.0.0
+core:packages:
+  - changelogIds:
+      - 2026-08-30-general-seo-audit.md
+    id: npm:tanstack-plugin-seo
+    updated: true
+npm:packages:
+  - id: npm:tanstack-plugin-seo
