@@ -2,6 +2,7 @@ import * as Command from "effect/unstable/cli/Command";
 
 import { checkCommand } from "./commands/check";
 import { auditCommand } from "./commands/audit";
+import { diffCommand } from "./commands/diff";
 import { graphCommand } from "./commands/graph";
 import { inspectCommand } from "./commands/inspect";
 import { robotsCommand } from "./commands/robots";
@@ -31,6 +32,7 @@ export const cli = Command.make("seo").pipe(
   ]),
   Command.withSubcommands([
     auditCommand,
+    diffCommand,
     graphCommand,
     inspectCommand,
     checkCommand,

@@ -44,7 +44,7 @@ export type {
   ScannerObservation,
   ScannerRule,
 } from "./scanner";
-export { renderAuditMarkdown, writeAuditFiles } from "./render";
+export { renderAuditDiff, renderAuditMarkdown, writeAuditFiles } from "./render";
 export { makeHttpScanner } from "./scanners/http";
 export {
   makeLighthouseScanner,
