@@ -123,7 +123,15 @@ try {
 
   await runSuccessfully(["bun", "run", "build"], root);
   const packOutput = await runSuccessfully(
-    ["npm", "pack", "--json", "--ignore-scripts", "--pack-destination", packDirectory],
+    [
+      "npm",
+      "pack",
+      "--json",
+      "--color=false",
+      "--ignore-scripts",
+      "--pack-destination",
+      packDirectory,
+    ],
     root,
   );
   const [packed] = JSON.parse(packOutput) as ReadonlyArray<PackResult>;
