@@ -327,6 +327,36 @@ Use `--probe-only` when Lighthouse is unavailable or unnecessary. Private and
 reserved destinations are rejected unless `--allow-private` is explicit; that
 flag is intended for local development and CI fixtures.
 
+### Compare audit artifacts
+
+Write timestamped reports from two revisions, then compare their semantic SEO
+outcomes without failing on timestamps, timing, or other raw scanner evidence:
+
+```bash
+seo audit https://example.com --output-dir .audit/before
+# deploy or check out the next revision
+seo audit https://example.com --output-dir .audit/after
+seo diff .audit/before/<report>.json .audit/after/<report>.json
+seo diff .audit/before/<report>.json .audit/after/<report>.json --json | jq
+```
+
+| Change | Outcome | Exit |
+| --- | --- | ---: |
+| Timestamp, warning text, or raw scanner evidence only | `unchanged` | 0 |
+| Editorial finding or improvement | `changed` | 0 |
+| Structural finding, scanner degradation, or lost coverage | `regressed` | 1 |
+
+Inputs must satisfy the published `AuditReport` schema version 1. JSON mode
+emits a separately versioned `audit-diff` document even when a regression makes
+the command exit 1; operational and schema failures write only to stderr.
+
+Raw scanner evidence remains in the source artifacts but is not interpreted by
+the generic comparator. Performance gates should be expressed as scanner
+findings with explicit thresholds rather than inferred from volatile Lighthouse
+measurements. Finding payloads (`message`, `fix`, `observed`, and `expected`)
+remain semantic: same-severity changes are reported as non-blocking `changed`
+outcomes.
+
 ## Testing
 
 Everything the CLI checks is a pure function you can call from a test:
