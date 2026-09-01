@@ -206,8 +206,14 @@ seo sitemap
 seo robots
 
 seo audit http://localhost:3000 --allow-private --probe-only --output-dir .audit/current
-seo diff .audit/before/*.json .audit/current/*.json
-seo diff .audit/before/*.json .audit/current/*.json --json | jq
+before="$(find .audit/before -type f -name '*.json' -print | sort | tail -n 1)"
+after="$(find .audit/current -type f -name '*.json' -print | sort | tail -n 1)"
+if [ -z "$before" ] || [ -z "$after" ]; then
+  echo "expected one JSON audit artifact in each directory" >&2
+  exit 1
+fi
+seo diff "$before" "$after"
+seo diff "$before" "$after" --json | jq
 ```
 
 `seo check` exits non-zero for structural graph violations. `seo diff` exits non-zero only when
