@@ -143,13 +143,19 @@ cannot silently ship without `staticData` or `head`:
 ```ts
 // vite.config.ts
 import { fileURLToPath } from "node:url";
+import { defineConfig } from "vite";
+
 import { seoRouteConfig } from "tanstack-plugin-seo/vite";
 
-seoRouteConfig({
-  outputPath: fileURLToPath(new URL("./src/lib/route-config.ts", import.meta.url)),
-  publicGroups: ["(marketing)", "(docs)"],
-  enforceCoverageIn: ["(marketing)", "(docs)"],
-  alwaysDisallow: ["/dashboard", "/api"],
+export default defineConfig({
+  plugins: [
+    seoRouteConfig({
+      outputPath: fileURLToPath(new URL("./src/lib/route-config.ts", import.meta.url)),
+      publicGroups: ["(marketing)", "(docs)"],
+      enforceCoverageIn: ["(marketing)", "(docs)"],
+      alwaysDisallow: ["/dashboard", "/api"],
+    }),
+  ],
 });
 ```
 
@@ -200,11 +206,11 @@ seo sitemap
 seo robots
 
 seo audit http://localhost:3000 --allow-private --probe-only --output-dir .audit/current
-seo diff .audit/before/report.json .audit/current/report.json
-seo diff .audit/before/report.json .audit/current/report.json --json | jq
+seo diff .audit/before/*.json .audit/current/*.json
+seo diff .audit/before/*.json .audit/current/*.json --json | jq
 ```
 
 `seo check` exits non-zero for structural graph violations. `seo diff` exits non-zero only when
 coverage or scanner quality regresses; timestamps and raw Lighthouse timings are deliberately
-ignored. Keep the two audit artifacts in CI or a release report so every deployment has a
-reviewable before/after.
+ignored. Each audit invocation writes one timestamped JSON artifact and one Markdown report; the
+globs above select those JSON artifacts for a reviewable before/after comparison.
