@@ -375,6 +375,14 @@ const report = inspectHtml(url, 200, html);
 expect(report.issues).toEqual([]);
 ```
 
+## TanStack Start example
+
+The [TanStack Start cookbook](./examples/tanstack-start/README.md) shows the complete wiring in
+one place: route-declared metadata, the graph loader, sitemap and robots projections, JSON-LD,
+the Vite coverage gate, and the CLI inspection and `seo diff` workflow. It is intentionally
+framework-neutral beyond the Start route seams, so you can copy the modules into an existing
+Start app and keep your own route tree and content collections.
+
 ## License
 
 MIT
